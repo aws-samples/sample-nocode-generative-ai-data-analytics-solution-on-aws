@@ -1,0 +1,652 @@
+openapi: 3.0.3
+info:
+  title: Code Interpreter REST API
+  version: 1.0.0
+
+tags:
+  - name: Sessions
+    description: Functions related to session management
+  - name: Messages
+    description: Functions related to message history and input
+  - name: File Transfer
+    description: Functions related to transferring files
+
+x-amazon-apigateway-request-validators:
+  basic:
+    validateRequestBody: true
+    validateRequestParameters: true
+  params-only:
+    validateRequestBody: false
+    validateRequestParameters: true
+x-amazon-apigateway-request-validator: basic
+x-amazon-apigateway-gateway-responses:
+  DEFAULT_4XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: '''*'''
+      gatewayresponse.header.Access-Control-Allow-Headers: '''*'''
+      gatewayresponse.header.Access-Control-Allow-Methods: '''*'''
+  DEFAULT_5XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: '''*'''
+      gatewayresponse.header.Access-Control-Allow-Headers: '''*'''
+      gatewayresponse.header.Access-Control-Allow-Methods: '''*'''
+
+
+paths:
+  /api/sessions:
+    post:
+      operationId: PostSession
+      tags:
+        - Sessions
+      summary: Creates a new session
+      description: |
+        Creates a new session and returns the session ID. The session is associated with the currently authenticated user's user_id.
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            Content-Type:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+              examples:
+                New session:
+                  value:
+                    session_id: 1e817ec0-76bb-4116-8fbf-f95355a001a6
+                    status: DONE
+                    ttl: 1715839695
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        type: aws_proxy
+
+    get:
+      operationId: GetSessions
+      tags:
+        - Sessions
+      summary: Retrieves all sessions for a user
+      description: |
+        Retrieves all sessions associated with the currently authenticated user's user_id.
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            Content-Type:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+              examples:
+                User sessions:
+                  value:
+                    - session_id: 1e817ec0-76bb-4116-8fbf-f95355a001a6
+                      status: DONE
+                      ttl: 1715839695
+                    - session_id: 4d8783c3-49cf-41d5-bf42-a666d83638a7
+                      status: PENDING
+                      status_message: Agent is running code
+                      ttl: 1715835827
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        type: aws_proxy
+
+  /api/sessions/{session_id}:
+    get:
+      operationId: GetSession
+      tags:
+        - Sessions
+      summary: Retrieves a session
+      description: |
+        Retrieves a session by session ID if the user is authorized to access this session.
+      parameters:
+        - $ref: '#/components/parameters/sessionIdParam'
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            Content-Type:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+              examples:
+                Pending session:
+                  value:
+                    session_id: 1e817ec0-76bb-4116-8fbf-f95355a001a6
+                    status: PENDING
+                    ttl: 1715839695
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        requestTemplates:
+          application/json: |
+            {
+              "session_id": "$input.params('session_id')"
+            }
+        type: aws_proxy
+
+    delete:
+      operationId: DeleteSession
+      tags:
+        - Sessions
+      summary: Deletes a session
+      description: |
+        Deletes a session by session ID if the user is authorized to delete this session.
+      parameters:
+        - $ref: '#/components/parameters/sessionIdParam'
+      responses:
+        '200':
+          description: Successful response
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        requestTemplates:
+          application/json: |
+            {
+              "session_id": "$input.params('session_id')"
+            }
+        type: aws_proxy
+
+  /api/sessions/{session_id}/messages:
+    post:
+      operationId: PostMessage
+      tags:
+        - Messages
+      summary: Post user message to a session
+      description: |
+        Post user input to a session by session ID if the user is authorized to access this session. When posting a message, the `role` field must be set to `user` and the `content` must not be empty. All other (optional) fields of the Message schema must be omitted.
+      parameters:
+        - $ref: '#/components/parameters/sessionIdParam'
+      requestBody:
+        description: User Input
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+            examples:
+              User question:
+                value:
+                  content: What are the columns in data.csv?
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            Content-Type:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              examples:
+                New message:
+                  value:
+                    timestamp: 1715839695
+                    role: user
+                    content: What are the columns in data.csv?
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        requestTemplates:
+          application/json: |
+            {
+              "session_id": "$input.params('session_id')"
+            }
+        type: aws_proxy
+    get:
+      operationId: GetMessages
+      tags:
+        - Messages
+      summary: Get session messages
+      description: |
+        Retrieves messages associated with a session. The `from` query parameter can be used to retrieve only messages in the history after a given UTC timestamp.
+      parameters:
+        - $ref: '#/components/parameters/sessionIdParam'
+        - $ref: '#/components/parameters/fromParam'
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            Content-Type:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+              examples:
+                Message history:
+                  value:
+                    - timestamp: 1715839370
+                      role: USER
+                      internal: false
+                      content: What are the columns in data.csv?
+                    - timestamp: 1715839380
+                      role: AGENT
+                      internal: true
+                      content: "I need to load data.csv into a DataFrame and inspect the columns."
+                    - timestamp: 1715839695
+                      role: AGENT
+                      internal: false
+                      content: The columns are x, y, and z.
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        requestTemplates:
+          application/json: |
+            {
+              "session_id": "$input.params('session_id')",
+              "from": "$input.params('from')"
+            }
+        type: aws_proxy
+
+  /api/sessions/{session_id}/files:
+    get:
+      operationId: ListFiles
+      tags:
+        - File Transfer
+      summary: List files associated with a session
+      description: |
+        List user uploaded files associated with a session.
+      parameters:
+        - $ref: '#/components/parameters/sessionIdParam'
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            Content-Type:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/File'
+              examples:
+                Files:
+                  value:
+                      - filename: data.csv
+                        size: 1024
+                      - filename: test.csv
+                        size: 350
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        requestTemplates:
+          application/json: |
+            {
+              "session_id": "$input.params('session_id')",
+              "filename": "$input.params('filename')"
+            }
+        type: aws_proxy
+
+  /api/sessions/{session_id}/files/upload:
+    get:
+      operationId: UploadFile
+      tags:
+        - File Transfer
+      summary: Get parameters to upload a file
+      description: |
+        Get parameters to upload a file to the user session. The filename must be set in the corresponding query parameter.
+      parameters:
+        - $ref: '#/components/parameters/sessionIdParam'
+        - $ref: '#/components/parameters/filenameParam'
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            Content-Type:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignedUploadParameters'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        requestTemplates:
+          application/json: |
+            {
+              "session_id": "$input.params('session_id')",
+              "filename": "$input.params('filename')"
+            }
+        type: aws_proxy
+
+  /api/sessions/{session_id}/files/download:
+    get:
+      operationId: DownloadFile
+      tags:
+        - File Transfer
+      summary: Get presigned URL to download a file
+      description: |
+        Get parameters to download a file from the user session. The filename must be set in the corresponding query parameter.
+      parameters:
+        - $ref: '#/components/parameters/sessionIdParam'
+        - $ref: '#/components/parameters/filenameParam'
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            Content-Type:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignedDownloadParameters'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '404':
+          $ref: '#/components/responses/404'
+        '500':
+          $ref: '#/components/responses/500'
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: ${api_lambda_rest_api_invoke_arn}
+        responses:
+          default:
+            statusCode: '200'
+        passthroughBehavior: when_no_match
+        requestTemplates:
+          application/json: |
+            {
+              "session_id": "$input.params('session_id')",
+              "filename": "$input.params('filename')"
+            }
+        type: aws_proxy
+
+
+
+components:
+  #-------------------------------
+  # Reusable responses
+  #-------------------------------
+  responses:
+    '400':
+      description: Input validation failed. Check your request parameters and retry the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '403':
+      description: The request is denied because of missing access permissions.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '404':
+      description: The specified resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    '500':
+      description: An internal server error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  #-------------------------------
+  # Reusable parameters
+  #-------------------------------
+  parameters:
+    sessionIdParam:
+      name: session_id
+      in: path
+      description: Session ID
+      required: true
+      schema:
+        type: string
+        format: uuid
+    filenameParam:
+      name: filename
+      in: query
+      description: Filename of the file to transfer
+      required: true
+      schema:
+        type: string
+      example: data.csv
+    fromParam:
+      name: from
+      in: query
+      description: UTC timestamp from which on to retrieve history items
+      required: false
+      schema:
+        type: number
+      example: 1715839695
+
+
+  schemas:
+    Session:
+      required:
+        - session_id
+        - status
+      type: object
+      properties:
+        session_id:
+          type: string
+          description: ID of the session
+          format: uuid
+        status:
+          type: string
+          enum:
+            - PENDING
+            - DONE
+            - ERROR
+          description: Status of the session
+        status_message:
+          type: string
+          example: "Agent is executing code"
+          description: User readable status message of the session
+        ttl:
+          type: number
+          description: Time-to-live (TTL) for the session, indicates when the session will be auto-deleted from the backend.
+          example: 1715839695
+    Role:
+      type: string
+      description: Name of the role. System messages are not displayed to the user.
+      enum:
+        - user
+        - assistant
+        - tool
+        - trace
+    Message:
+      required:
+        - content
+      type: object
+      properties:
+        content:
+          type: string
+          description: Chat message content
+        role:
+          $ref: '#/components/schemas/Role'
+        internal:
+          type: boolean
+          description: Whether the message is internal or not. Internal messages are not displayed by default to the user.
+        timestamp:
+          type: number
+          description: Timestamp of when the message was created. This will be provided and added in the backend.
+
+    PresignedUploadParameters:
+      type: object
+      required:
+        - url
+        - fields
+      properties:
+        url:
+          type: string
+          format: uri
+          description: The URL to upload the file to.
+          example: https://mybucket.s3.amazonaws.com
+        fields:
+          type: object
+          description: The fields that need to be set on the POST request.
+          example: {'acl': 'public-read','key': 'mykey', 'signature': 'mysignature', 'policy': 'mybase64 encoded policy'}
+
+    PresignedDownloadParameters:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: The presigned URL to download the file from.
+          example: https://mybucket.s3.amazonaws.com/example/output.png
+
+    File:
+      type: object
+      required:
+        - filename
+        - size
+      properties:
+        filename:
+          type: string
+          description: Name of the file
+          example: data.csv
+        size:
+          type: integer
+          description: Size of the file in bytes
+          example: 1024
+
+    Error:
+      required:
+        - error_code
+        - error_id
+        - message
+      type: object
+      properties:
+        message:
+          type: string
+          description: A user-readable error message in English language
+        error_code:
+          type: integer
+          description: A specific error code
+          format: int32
+        error_id:
+          type: string
+          description: An UUID identifying the error
+          format: uuid

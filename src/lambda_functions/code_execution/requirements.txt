@@ -1,0 +1,10 @@
+aws-lambda-powertools[tracer]~=3.5.0
+pydantic-settings~=2.7.1
+lambda_multiprocessing~=1.0
+
+# code exec deps
+pandas[excel, plot, output-formatting]~=2.2.2
+scikit-learn~=1.6.0
+matplotlib~=3.10.0
+seaborn~=0.13.2
+plotly~=6.0.0

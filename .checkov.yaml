@@ -1,0 +1,8 @@
+skip-check:
+  - CKV_TF_1 # "Ensure Terraform module sources use a commit hash"
+  - CKV_AWS_338 # "Ensure CloudWatch log groups retains logs for at least 1 year"
+output: cli
+quiet: true
+
+skip-path:
+  - builds
