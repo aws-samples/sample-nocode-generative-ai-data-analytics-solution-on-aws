@@ -10,7 +10,7 @@ pydantic-settings = "^2.7.1"
 boto3 = "^1.36.15"
 streamlit = "^1.41.1"
 plotly = "^6.0.0"
-requests = "^2.32.3"
+requests = "^2.32.4"
 
 
 [tool.poetry.group.dev.dependencies]
